@@ -1,0 +1,109 @@
+name: windows-foundryup-check
+
+# Checks whether foundryup v2 (Rust) installs Foundry on Windows from PowerShell and
+# Command Prompt, without Git Bash or WSL on PATH.
+
+on:
+  push:
+    branches: [ci/windows-foundryup-check]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      FOUNDRYUP_VERSION: v2.0.0
+    steps:
+      - name: Environment
+        shell: pwsh
+        run: |
+          [System.Environment]::OSVersion.VersionString
+          $PSVersionTable.PSVersion.ToString()
+
+      - name: Install with PowerShell, no Git or bash on PATH
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:PATH = ($env:PATH -split ';' | Where-Object { $_ -and $_ -notmatch '\\Git\\|\\msys|\\cygwin|\\mingw' }) -join ';'
+          "bash on PATH: " + ((Get-Command bash -ErrorAction SilentlyContinue).Source ?? 'none')
+          "sh on PATH: " + ((Get-Command sh -ErrorAction SilentlyContinue).Source ?? 'none')
+          "git on PATH: " + ((Get-Command git -ErrorAction SilentlyContinue).Source ?? 'none')
+
+          $dir = Join-Path $env:USERPROFILE '.foundry\bin'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $exe = Join-Path $dir 'foundryup.exe'
+          Invoke-WebRequest -Uri "https://github.com/foundry-rs/foundryup/releases/download/$env:FOUNDRYUP_VERSION/foundryup_win32_amd64.exe" -OutFile $exe
+          & $exe --version
+          & $exe
+          if ($LASTEXITCODE -ne 0) { throw "foundryup exited $LASTEXITCODE" }
+          Get-ChildItem $dir | Select-Object Name, Length | Format-Table | Out-String
+          $env:PATH = "$dir;$env:PATH"
+          foreach ($b in 'forge', 'cast', 'anvil', 'chisel') {
+            & $b --version
+            if ($LASTEXITCODE -ne 0) { throw "$b --version exited $LASTEXITCODE" }
+          }
+          & foundryup --list
+          "$dir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Use from Command Prompt
+        shell: cmd
+        run: |
+          where forge
+          forge --version || exit /b 1
+          cast --version || exit /b 1
+
+      - name: Project without Git (forge init --no-git, build, test)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:PATH = ($env:PATH -split ';' | Where-Object { $_ -and $_ -notmatch '\\Git\\|\\msys|\\cygwin|\\mingw' }) -join ';'
+          Set-Location $env:RUNNER_TEMP
+          forge init --no-git hello
+          if ($LASTEXITCODE -ne 0) { throw "forge init exited $LASTEXITCODE" }
+          Set-Location hello
+          forge build
+          if ($LASTEXITCODE -ne 0) { throw "forge build exited $LASTEXITCODE" }
+          forge test
+          if ($LASTEXITCODE -ne 0) { throw "forge test exited $LASTEXITCODE" }
+
+      - name: Project with Git (forge init, which installs forge-std)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git config --global user.email ci@example.com
+          git config --global user.name ci
+          Set-Location $env:RUNNER_TEMP
+          forge init hello-git
+          if ($LASTEXITCODE -ne 0) { throw "forge init exited $LASTEXITCODE" }
+          Set-Location hello-git
+          forge test
+          if ($LASTEXITCODE -ne 0) { throw "forge test exited $LASTEXITCODE" }
+
+      - name: anvil and cast
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $p = Start-Process anvil -ArgumentList '--port', '8545' -PassThru -RedirectStandardOutput "$env:RUNNER_TEMP\anvil.log"
+          Start-Sleep -Seconds 3
+          cast block-number --rpc-url http://127.0.0.1:8545
+          if ($LASTEXITCODE -ne 0) { throw "cast exited $LASTEXITCODE" }
+          cast balance 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --rpc-url http://127.0.0.1:8545
+          Stop-Process -Id $p.Id
+
+      - name: Update paths (nightly, switch back, self-update)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foundryup --install nightly
+          if ($LASTEXITCODE -ne 0) { throw "install nightly exited $LASTEXITCODE" }
+          forge --version
+          foundryup --list
+          foundryup --install stable
+          if ($LASTEXITCODE -ne 0) { throw "install stable exited $LASTEXITCODE" }
+          forge --version
+          foundryup --update
+          "self-update exit: $LASTEXITCODE"
+          foundryup --version
