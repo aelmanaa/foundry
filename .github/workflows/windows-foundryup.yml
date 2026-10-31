@@ -108,3 +108,26 @@ jobs:
           foundryup --update
           "self-update exit: $LASTEXITCODE"
           foundryup --version
+
+  book-snippet:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Book snippet, verbatim
+        shell: pwsh
+        run: |
+          $bin = "$env:USERPROFILE\.foundry\bin"
+          New-Item -ItemType Directory -Force -Path $bin | Out-Null
+          Invoke-WebRequest https://github.com/foundry-rs/foundryup/releases/latest/download/foundryup_win32_amd64.exe -OutFile "$bin\foundryup.exe"
+          [Environment]::SetEnvironmentVariable('Path', "$bin;" + [Environment]::GetEnvironmentVariable('Path', 'User'), 'User')
+          $env:Path = "$bin;$env:Path"
+          foundryup
+          forge --version
+          if ($LASTEXITCODE -ne 0) { throw "forge exited $LASTEXITCODE" }
+      - name: User PATH persisted
+        shell: pwsh
+        run: |
+          $user = [Environment]::GetEnvironmentVariable('Path', 'User')
+          "User Path: $user"
+          if (-not ($user -split ';' -contains "$env:USERPROFILE\.foundry\bin")) { throw 'bin dir not in the user Path' }
+          & "$env:USERPROFILE\.foundry\bin\forge.exe" --version
