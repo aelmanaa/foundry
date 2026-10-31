@@ -15,7 +15,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     env:
-      FOUNDRYUP_VERSION: v2.0.0
+      FUP_RELEASE: v2.0.0
     steps:
       - name: Environment
         shell: pwsh
@@ -35,7 +35,7 @@ jobs:
           $dir = Join-Path $env:USERPROFILE '.foundry\bin'
           New-Item -ItemType Directory -Force -Path $dir | Out-Null
           $exe = Join-Path $dir 'foundryup.exe'
-          Invoke-WebRequest -Uri "https://github.com/foundry-rs/foundryup/releases/download/$env:FOUNDRYUP_VERSION/foundryup_win32_amd64.exe" -OutFile $exe
+          Invoke-WebRequest -Uri "https://github.com/foundry-rs/foundryup/releases/download/$env:FUP_RELEASE/foundryup_win32_amd64.exe" -OutFile $exe
           & $exe --version
           & $exe
           if ($LASTEXITCODE -ne 0) { throw "foundryup exited $LASTEXITCODE" }
