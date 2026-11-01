@@ -73,6 +73,13 @@ impl<N: Network> TransactionMaybeSigned<N> {
         }
     }
 
+    pub fn chain_id(&self) -> Option<u64> {
+        match self {
+            Self::Signed { tx, .. } => tx.chain_id(),
+            Self::Unsigned(tx) => tx.chain_id(),
+        }
+    }
+
     pub fn nonce(&self) -> Option<u64> {
         match self {
             Self::Signed { tx, .. } => Some(tx.nonce()),

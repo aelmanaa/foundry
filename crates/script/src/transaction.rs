@@ -8,7 +8,10 @@ use forge_script_sequence::TransactionWithMetadata;
 use foundry_common::{
     ContractData, ContractsByArtifact, SELECTOR_LEN, TransactionMaybeSigned, fmt::format_token_raw,
 };
-use foundry_evm::traces::{CallKind, CallTraceDecoder};
+use foundry_evm::{
+    core::createx::{self, CREATEX_ADDRESS, decode_deploy_create2},
+    traces::{CallKind, CallTraceDecoder},
+};
 use itertools::Itertools;
 use std::collections::BTreeMap;
 
@@ -39,7 +42,22 @@ impl<N: Network> ScriptTransactionBuilder<N> {
             self.transaction.call_kind = CallKind::Call;
             self.transaction.contract_address = Some(to);
 
-            if to == create2_deployer {
+            if to == create2_deployer && to == CREATEX_ADDRESS {
+                let tx = &self.transaction.transaction;
+                let decoded = tx.input().and_then(|input| decode_deploy_create2(input));
+                let address = decoded.as_ref().and_then(|(salt, init_code)| {
+                    createx::create2_address(to, tx.from()?, tx.chain_id()?, *salt, init_code)
+                });
+                if let (Some(address), Some((_, init_code))) = (address, decoded) {
+                    self.transaction.call_kind = CallKind::Create2;
+                    self.transaction.contract_address = Some(address);
+                    self.set_creation_code(&init_code, known_contracts)?;
+                } else {
+                    sh_warn!(
+                        "Skipping CreateX decoding for call to {to}: not a deployCreate2 call with a known sender and chain"
+                    )?;
+                }
+            } else if to == create2_deployer {
                 if let Some(input) = self.transaction.transaction.input()
                     && input.len() >= 32
                 {
@@ -119,7 +137,7 @@ impl<N: Network> ScriptTransactionBuilder<N> {
 
         self.transaction.contract_address = Some(address);
 
-        let Some(data) = self.transaction.transaction.input() else { return Ok(()) };
+        let Some(data) = self.transaction.transaction.input().cloned() else { return Ok(()) };
 
         // `create2` transactions are prefixed by a 32 byte salt.
         let creation_code = if is_create2 {
@@ -128,8 +146,18 @@ impl<N: Network> ScriptTransactionBuilder<N> {
             }
             &data[32..]
         } else {
-            data
+            &data[..]
         };
+        self.set_creation_code(creation_code, contracts)
+    }
+
+    /// Sets the contract name and constructor arguments from the creation code.
+    fn set_creation_code(
+        &mut self,
+        creation_code: &[u8],
+        contracts: &ContractsByArtifact,
+    ) -> Result<()> {
+        let is_create2 = self.transaction.call_kind == CallKind::Create2;
         let artifact = contracts.find_by_creation_code_prefix(creation_code);
         self.transaction.contract_name = artifact
             .or_else(|| contracts.find_by_creation_code(creation_code))
@@ -157,7 +185,7 @@ impl<N: Network> ScriptTransactionBuilder<N> {
                     constructor_args=%hex::encode(constructor_args),
                     "Failed to decode constructor arguments",
                 );
-                debug!(full_data=%hex::encode(data), bytecode=%hex::encode(creation_code));
+                debug!(bytecode=%hex::encode(creation_code));
             })?;
         self.transaction.arguments = Some(values.iter().map(format_token_raw).collect());
 

@@ -15,6 +15,7 @@ use foundry_evm::{
     constants::CALLER,
     core::{
         FoundryBlock, FoundryTransaction,
+        createx::deploy_create2_calldata,
         evm::{EvmEnvFor, FoundryEvmNetwork, TransactionRequestFor, TxEnvFor},
     },
     executors::{DeployResult, EvmError, ExecutionErr, Executor, RawCallResult},
@@ -157,7 +158,7 @@ impl<FEN: FoundryEvmNetwork> ScriptRunner<FEN> {
                     })
                 }
             }
-            ScriptPredeployLibraries::Create2 { onchain, salt, local } => {
+            ScriptPredeployLibraries::Create2 { onchain, salt, local, createx_salt } => {
                 self.deploy_local_libraries(local, &mut debug_bytecodes)?;
                 let create2_deployer = self.executor.create2_deployer();
                 for library in onchain {
@@ -167,7 +168,12 @@ impl<FEN: FoundryEvmNetwork> ScriptRunner<FEN> {
                     if !self.executor.is_empty_code(address)? {
                         continue;
                     }
-                    let calldata = [salt.as_ref(), library.bytecode.as_ref()].concat();
+                    let calldata: Vec<u8> = match createx_salt {
+                        Some(createx_salt) => {
+                            deploy_create2_calldata(*createx_salt, &library.bytecode).into()
+                        }
+                        None => [salt.as_ref(), library.bytecode.as_ref()].concat(),
+                    };
                     let RawCallResult {
                         traces: deploy_traces,
                         debug_bytecodes: deploy_debug_bytecodes,
@@ -192,7 +198,8 @@ impl<FEN: FoundryEvmNetwork> ScriptRunner<FEN> {
                         .with_from(self.evm_opts.sender)
                         .with_input(calldata)
                         .with_nonce(sender_nonce + library_transactions.len() as u64)
-                        .with_to(create2_deployer);
+                        .with_to(create2_deployer)
+                        .with_chain_id(self.executor.evm_env().cfg_env.chain_id);
 
                     script_config.tempo.apply::<FEN::Network>(&mut tx_req, None);
 

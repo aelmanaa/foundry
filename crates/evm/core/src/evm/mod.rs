@@ -387,13 +387,20 @@ where
 }
 
 /// Get the call inputs for the CREATE2 factory.
+///
+/// Nick's factory takes `salt ++ initCode`; CreateX takes `deployCreate2(salt, initCode)`.
 pub fn get_create2_factory_call_inputs<T: JournalTr>(
     salt: U256,
     inputs: &CreateInputs,
     deployer: Address,
+    createx: bool,
     journal: &mut T,
 ) -> Result<CallInputs, <T::Database as Database>::Error> {
-    let calldata = [&salt.to_be_bytes::<32>()[..], &inputs.init_code()[..]].concat();
+    let calldata: Vec<u8> = if createx {
+        crate::createx::deploy_create2_calldata(salt.into(), inputs.init_code()).into()
+    } else {
+        [&salt.to_be_bytes::<32>()[..], &inputs.init_code()[..]].concat()
+    };
     let account = journal.load_account_with_code(deployer)?;
     Ok(CallInputs {
         caller: inputs.caller(),

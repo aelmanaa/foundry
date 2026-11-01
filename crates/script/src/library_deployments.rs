@@ -8,7 +8,10 @@ use alloy_primitives::{Address, keccak256};
 use eyre::Result;
 use foundry_common::{LIBRARY_DEPLOYER, matches_contract_creation, shell};
 use foundry_compilers::ArtifactId;
-use foundry_evm::{constants::CHEATCODE_ADDRESS, core::evm::FoundryEvmNetwork};
+use foundry_evm::{
+    constants::CHEATCODE_ADDRESS,
+    core::{createx::decode_deploy_create2, evm::FoundryEvmNetwork},
+};
 use std::collections::BTreeSet;
 
 struct EligibleTransactions {
@@ -95,7 +98,7 @@ impl<FEN: FoundryEvmNetwork> PreSimulationState<FEN> {
                     let onchain = onchain_libraries(&output, &local);
                     (output.output, ScriptPredeployLibraries::Default { onchain, local })
                 }),
-            ScriptPredeployLibraries::Create2 { salt, .. } => linker
+            ScriptPredeployLibraries::Create2 { salt, createx_salt, .. } => linker
                 .link_with_create2_partition(
                     libraries,
                     self.script_config.evm_opts.create2_deployer,
@@ -108,7 +111,12 @@ impl<FEN: FoundryEvmNetwork> PreSimulationState<FEN> {
                     let onchain = onchain_libraries(&output, &local);
                     (
                         output.output,
-                        ScriptPredeployLibraries::Create2 { onchain, salt: *salt, local },
+                        ScriptPredeployLibraries::Create2 {
+                            onchain,
+                            salt: *salt,
+                            local,
+                            createx_salt: *createx_salt,
+                        },
                     )
                 }),
         };
@@ -201,10 +209,19 @@ impl<FEN: FoundryEvmNetwork> PreSimulationState<FEN> {
                 ScriptPredeployLibraries::Default { .. } => {
                     tx.transaction.to().is_none() && input == library.bytecode.as_ref()
                 }
-                ScriptPredeployLibraries::Create2 { salt, .. } => {
+                ScriptPredeployLibraries::Create2 { salt, createx_salt, .. } => {
                     tx.transaction.to() == Some(self.script_config.evm_opts.create2_deployer)
-                        && input.get(..32) == Some(salt.as_slice())
-                        && input.get(32..) == Some(library.bytecode.as_ref())
+                        && match createx_salt {
+                            Some(createx_salt) => {
+                                decode_deploy_create2(input).is_some_and(|(s, code)| {
+                                    s == *createx_salt && code == library.bytecode
+                                })
+                            }
+                            None => {
+                                input.get(..32) == Some(salt.as_slice())
+                                    && input.get(32..) == Some(library.bytecode.as_ref())
+                            }
+                        }
                 }
             };
             let exact = deployment_matches

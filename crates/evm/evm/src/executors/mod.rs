@@ -26,6 +26,7 @@ use foundry_evm_core::{
         CALLER, CHEATCODE_ADDRESS, CHEATCODE_CONTRACT_HASH, DEFAULT_CREATE2_DEPLOYER,
         DEFAULT_CREATE2_DEPLOYER_CODE, DEFAULT_CREATE2_DEPLOYER_DEPLOYER,
     },
+    createx::{CREATEX_ADDRESS, CREATEX_RUNTIME_CODE},
     decode::{RevertDecoder, SkipReason},
     eip2935::{
         HISTORY_STORAGE_ADDRESS, HISTORY_STORAGE_CODE, history_storage_slot, history_storage_value,
@@ -464,7 +465,22 @@ impl<FEN: FoundryEvmNetwork> Executor<FEN> {
     }
 
     /// Creates the default CREATE2 Contract Deployer for local tests and scripts.
+    ///
+    /// When the configured deployer is CreateX's address, places CreateX's runtime code there
+    /// instead, if the account has no code.
     pub fn deploy_create2_deployer(&mut self) -> eyre::Result<()> {
+        if self.create2_deployer() == CREATEX_ADDRESS {
+            let has_code = self
+                .backend()
+                .basic_ref(CREATEX_ADDRESS)?
+                .and_then(|account| account.code)
+                .is_some_and(|code| !code.is_empty());
+            if !has_code {
+                trace!("placing local CreateX");
+                self.set_code(CREATEX_ADDRESS, Bytecode::new_raw(CREATEX_RUNTIME_CODE.clone()))?;
+            }
+            return Ok(());
+        }
         trace!("deploying local create2 deployer");
         let create2_deployer_account = self
             .backend()

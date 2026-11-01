@@ -1,6 +1,7 @@
 use crate::{
     EvmEnv, FoundryBlock, FoundryTransaction,
     constants::DEFAULT_CREATE2_DEPLOYER,
+    createx::CREATEX_ADDRESS,
     fork::{CreateFork, Fork},
     utils::{apply_chain_and_block_specific_env_changes_for_chain, block_env_from_header},
 };
@@ -558,7 +559,7 @@ impl EvmOpts {
     ) -> eyre::Result<bool> {
         let Some(_) = &self.fork_url else {
             eyre::ensure!(fork.is_none(), "resolved fork provided without a configured fork");
-            return Ok(self.create2_deployer == DEFAULT_CREATE2_DEPLOYER);
+            return Ok(matches!(self.create2_deployer, DEFAULT_CREATE2_DEPLOYER | CREATEX_ADDRESS));
         };
         let fork = fork.ok_or_else(|| eyre::eyre!("fork must be resolved"))?;
         let provider = self.provider_for_fork::<AnyNetwork>(fork)?;

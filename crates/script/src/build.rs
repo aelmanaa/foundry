@@ -29,7 +29,7 @@ use foundry_compilers::{
     utils::source_files_iter,
 };
 use foundry_evm::{
-    core::evm::FoundryEvmNetwork,
+    core::{createx, evm::FoundryEvmNetwork},
     traces::{CallTraceDecoder, debug::ContractSources},
 };
 use foundry_linking::Linker;
@@ -71,13 +71,25 @@ impl BuildData {
 
         let known_libraries = script_config.config.libraries_with_remappings()?;
 
+        // CreateX deploys with a salt derived from the given one, sender and chain.
+        let chain_id = script_config
+            .source_chain_id
+            .or(script_config.evm_opts.env.chain_id)
+            .unwrap_or(foundry_common::DEV_CHAIN_ID);
+        let (link_salt, createx_salt) = createx::library_salts(
+            create2_deployer,
+            script_config.evm_opts.sender,
+            chain_id,
+            script_config.config.create2_library_salt,
+        )?;
+
         let maybe_create2_link_output = can_use_create2
             .then(|| {
                 self.get_linker()
                     .link_with_create2_detailed(
                         known_libraries.clone(),
                         create2_deployer,
-                        script_config.config.create2_library_salt,
+                        link_salt,
                         [&self.target],
                     )
                     .ok()
@@ -89,8 +101,9 @@ impl BuildData {
                 output.output.libraries,
                 ScriptPredeployLibraries::Create2 {
                     onchain: output.linked_libraries,
-                    salt: script_config.config.create2_library_salt,
+                    salt: link_salt,
                     local: Vec::new(),
+                    createx_salt,
                 },
             )
         } else {
@@ -132,8 +145,12 @@ pub enum ScriptPredeployLibraries {
     },
     Create2 {
         onchain: Vec<foundry_linking::LinkedLibrary>,
+        /// The salt CREATE2 uses, from which library addresses are computed.
         salt: B256,
         local: Vec<foundry_linking::LinkedLibrary>,
+        /// With CreateX as the deployer, the salt sent in `deployCreate2`; CreateX derives
+        /// `salt` from it.
+        createx_salt: Option<B256>,
     },
 }
 

@@ -41,7 +41,11 @@ use foundry_config::{
 };
 use foundry_evm::{
     constants::{CALLER, MAGIC_ASSUME},
-    core::{backend::DatabaseExt, evm::FoundryEvmNetwork},
+    core::{
+        backend::DatabaseExt,
+        createx::{CREATEX_ADDRESS, deploy_create2_calldata},
+        evm::FoundryEvmNetwork,
+    },
     decode::{RevertDecoder, SkipReason},
     executors::{
         CallResult, DynamicTargetCtx, EvmError, Executor, ITest, InvariantReplayOptions,
@@ -586,19 +590,24 @@ impl<'a, FEN: FoundryEvmNetwork> ContractRunner<'a, FEN> {
                     }
                 }
             }
-            LibraryDeployment::Create2 { deployer, salt } => {
+            LibraryDeployment::Create2 { deployer, salt, createx_salt } => {
                 // Foundry only knows how to install the canonical factory locally. A custom
                 // factory is usable only when it already exists in fork state. Tempo also
                 // provides the factory as a predeploy, which must not be deployed again.
-                if deployer == foundry_evm::constants::DEFAULT_CREATE2_DEPLOYER
-                    && !self.evm_opts.networks.is_tempo()
+                if matches!(
+                    deployer,
+                    foundry_evm::constants::DEFAULT_CREATE2_DEPLOYER | CREATEX_ADDRESS
+                ) && !self.evm_opts.networks.is_tempo()
                 {
                     self.executor.deploy_create2_deployer()?;
                 }
                 for code in &self.mcr.libs_to_deploy {
                     let address = deployer.create2_from_code(salt, code);
                     if self.executor.is_empty_code(address)? {
-                        let calldata = [salt.as_slice(), code.as_ref()].concat().into();
+                        let calldata = match createx_salt {
+                            Some(createx_salt) => deploy_create2_calldata(createx_salt, code),
+                            None => [salt.as_slice(), code.as_ref()].concat().into(),
+                        };
                         let (raw, recorded_account_diffs) =
                             self.deploy_library(address, |executor| {
                                 executor.transact_raw(

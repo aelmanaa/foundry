@@ -38,6 +38,7 @@ pub mod backend;
 pub mod buffer;
 pub mod bytecode;
 pub mod constants;
+pub mod createx;
 pub mod decode;
 pub mod eip2935;
 pub mod evm;

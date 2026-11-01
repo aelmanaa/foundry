@@ -48,6 +48,7 @@ use foundry_evm::{
     backend::Backend,
     core::{
         Breakpoints, FoundryTransaction,
+        createx::{CREATEX_ADDRESS, decode_deploy_create2},
         evm::{EthEvmNetwork, EvmEnvFor, FoundryEvmNetwork, SpecFor, TempoEvmNetwork, TxEnvFor},
     },
     executors::ExecutorBuilder,
@@ -840,21 +841,21 @@ impl ScriptArgs {
                     .map(|data| (data, tx.transaction.to()))
             })
         }) {
-            let mut offset = 0;
-
             // Find if it's a CREATE or CREATE2. Otherwise, skip transaction.
-            if let Some(to) = to {
-                if to == create2_deployer {
-                    // Size of the salt prefix.
-                    offset = 32;
-                } else {
-                    continue;
+            let init_code: Bytes = match to {
+                None => data.clone(),
+                Some(to) if to == create2_deployer && to == CREATEX_ADDRESS => {
+                    let Some((_, init_code)) = decode_deploy_create2(data) else { continue };
+                    init_code
                 }
-            }
+                // Skip the salt prefix.
+                Some(to) if to == create2_deployer => data.slice(32..),
+                Some(_) => continue,
+            };
 
             // Find artifact with a deployment code same as the data.
             if let Some((name, _, deployed_code)) =
-                bytecodes.iter().find(|(_, init_code, _)| *init_code == &data[offset..])
+                bytecodes.iter().find(|(_, code, _)| *code == init_code.as_ref())
             {
                 let deployment_size = deployed_code.len();
 

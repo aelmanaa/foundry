@@ -3,6 +3,7 @@
 use crate::{
     FoundryBlock, FoundryChain, FoundryInspectorExt, FoundryTransaction, FromAnyRpcTransaction,
     constants::{CALLER, CHEATCODE_ADDRESS, DEFAULT_CREATE2_DEPLOYER, TEST_CONTRACT_ADDRESS},
+    createx::CREATEX_ADDRESS,
     evm::{
         BlockEnvFor, ChainFor, EthEvmNetwork, EvmEnvFor, FoundryContextFor, FoundryEvmFactory,
         FoundryEvmNetwork, HaltReasonFor, SpecFor, TxEnvFor,
@@ -722,7 +723,7 @@ impl<FEN: FoundryEvmNetwork> Backend<FEN> {
     /// Checks library-linking availability against this backend's remote state.
     pub async fn can_use_create2_deployer(&self, deployer: Address) -> eyre::Result<bool> {
         let Some(fork) = self.fork()? else {
-            return Ok(deployer == DEFAULT_CREATE2_DEPLOYER);
+            return Ok(matches!(deployer, DEFAULT_CREATE2_DEPLOYER | CREATEX_ADDRESS));
         };
         let mut request = self
             .active_fork_options()

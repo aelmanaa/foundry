@@ -26,7 +26,10 @@ use foundry_compilers::{
 use foundry_config::{Config, FoundryHardfork, InlineConfig};
 use foundry_evm::{
     backend::Backend,
-    core::evm::{EvmEnvFor, FoundryEvmNetwork, SpecFor, TxEnvFor},
+    core::{
+        createx,
+        evm::{EvmEnvFor, FoundryEvmNetwork, SpecFor, TxEnvFor},
+    },
     decode::RevertDecoder,
     executors::{EarlyExit, Executor, ExecutorBuilder, ReplayObservation, ShowmapDomain},
     fuzz::{
@@ -98,7 +101,13 @@ pub struct MultiContractRunner<FEN: FoundryEvmNetwork> {
 #[derive(Clone, Copy, Debug)]
 pub enum LibraryDeployment {
     Nonce,
-    Create2 { deployer: Address, salt: alloy_primitives::B256 },
+    Create2 {
+        deployer: Address,
+        /// The salt CREATE2 uses, from which library addresses are computed.
+        salt: alloy_primitives::B256,
+        /// With CreateX as the deployer, the salt sent in `deployCreate2`.
+        createx_salt: Option<alloy_primitives::B256>,
+    },
 }
 
 impl<FEN: FoundryEvmNetwork> Deref for MultiContractRunner<FEN> {
@@ -770,11 +779,17 @@ impl MultiContractRunnerBuilder {
         let revert_decoder = RevertDecoder::new().with_abis(abis);
 
         let configured_libraries = self.config.libraries_with_remappings()?;
+        let (link_salt, createx_salt) = createx::library_salts(
+            evm_opts.create2_deployer,
+            LIBRARY_DEPLOYER,
+            evm_opts.env.chain_id.unwrap_or(foundry_common::DEV_CHAIN_ID),
+            self.config.create2_library_salt,
+        )?;
         let create2 = if self.create2_deployer_available(&evm_opts, &backend) {
             match linker.link_with_create2_detailed(
                 configured_libraries.clone(),
                 evm_opts.create2_deployer,
-                self.config.create2_library_salt,
+                link_salt,
                 linker.contracts.keys(),
             ) {
                 Ok(output) => Some(output),
@@ -798,7 +813,8 @@ impl MultiContractRunnerBuilder {
                 } else {
                     LibraryDeployment::Create2 {
                         deployer: evm_opts.create2_deployer,
-                        salt: self.config.create2_library_salt,
+                        salt: link_salt,
+                        createx_salt,
                     }
                 };
                 (output, deployment)

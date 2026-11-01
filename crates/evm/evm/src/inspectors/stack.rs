@@ -7,6 +7,7 @@ use alloy_primitives::{
     Address, B256, Bytes, Log, TxKind, U256, keccak256,
     map::{AddressHashMap, AddressHashSet, AddressMap},
 };
+use alloy_sol_types::SolValue;
 
 use foundry_cheatcodes::{CheatcodeAnalysis, CheatcodesExecutor, NestedEvmClosureFor, Wallets};
 use foundry_common::{compile::Analysis, sh_warn};
@@ -15,6 +16,7 @@ use foundry_evm_core::{
     FoundryBlock, FoundryTransaction, InspectorExt,
     backend::{ContextUpdateFor, DatabaseError, DatabaseExt, JournaledState},
     constants::DEFAULT_CREATE2_DEPLOYER_CODEHASH,
+    createx::CREATEX_CODEHASH,
     env::FoundryContextExt,
     evm::{
         BlockEnvFor, ChainFor, EthEvmNetwork, EvmEnvFor, EvmFactoryFor, FoundryContextFor,
@@ -417,6 +419,8 @@ struct EarlyExitTestGate {
 struct PendingCreate2Redirect {
     depth: usize,
     charged_create_state_gas: bool,
+    /// The factory is CreateX, which returns an ABI-encoded address.
+    createx: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -972,15 +976,19 @@ impl<FEN: FoundryEvmNetwork> InspectorStackRefMut<'_, FEN> {
         };
 
         let address = match call.instruction_result() {
-            return_ok!() => Address::try_from(call.output().as_ref())
-                .map_err(|_| {
-                    call.result = InterpreterResult {
-                        result: InstructionResult::Revert,
-                        output: "invalid CREATE2 factory output".into(),
-                        gas: Gas::new(call.result.gas.limit()),
-                    };
-                })
-                .ok(),
+            return_ok!() => if redirect.createx {
+                Address::abi_decode(call.output().as_ref()).map_err(|_| ())
+            } else {
+                Address::try_from(call.output().as_ref()).map_err(|_| ())
+            }
+            .map_err(|_| {
+                call.result = InterpreterResult {
+                    result: InstructionResult::Revert,
+                    output: "invalid CREATE2 factory output".into(),
+                    gas: Gas::new(call.result.gas.limit()),
+                };
+            })
+            .ok(),
             _ => None,
         };
 
@@ -1689,7 +1697,10 @@ impl<FEN: FoundryEvmNetwork> Inspector<FoundryContextFor<'_, FEN>>
             });
         }
 
+        // The factory's own CREATE2 is never redirected: CreateX derives its salt, so a second
+        // pass through it would deploy elsewhere.
         if let FrameInput::Create(inputs) = frame_input
+            && inputs.caller() != self.create2_deployer()
             && self.should_use_create2_factory(ecx.journal().depth(), inputs)
         {
             // `get_create2_factory_call_inputs` forwards `inputs.value()` to the factory
@@ -1736,7 +1747,9 @@ impl<FEN: FoundryEvmNetwork> Inspector<FoundryContextFor<'_, FEN>>
                     charged_create_state_gas: inputs.charged_create_state_gas(),
                 });
                 return None;
-            } else if code_hash != DEFAULT_CREATE2_DEPLOYER_CODEHASH {
+            }
+            let createx = code_hash == CREATEX_CODEHASH;
+            if code_hash != DEFAULT_CREATE2_DEPLOYER_CODEHASH && !createx {
                 self.inner.pending_create2_error = Some(CreateOutcome {
                     result: InterpreterResult {
                         result: InstructionResult::Revert,
@@ -1749,14 +1762,20 @@ impl<FEN: FoundryEvmNetwork> Inspector<FoundryContextFor<'_, FEN>>
                 return None;
             }
 
-            let call_inputs =
-                get_create2_factory_call_inputs(salt, inputs, create2_deployer, ecx.journal_mut())
-                    .ok()?;
+            let call_inputs = get_create2_factory_call_inputs(
+                salt,
+                inputs,
+                create2_deployer,
+                createx,
+                ecx.journal_mut(),
+            )
+            .ok()?;
 
             // Record the redirect depth *after* validation succeeds.
             self.inner.pending_create2_redirects.push(PendingCreate2Redirect {
                 depth: ecx.journal().depth(),
                 charged_create_state_gas: inputs.charged_create_state_gas(),
+                createx,
             });
 
             // Rewrite the frame input from Create to Call.
