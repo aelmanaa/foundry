@@ -10,6 +10,7 @@ use alloy_primitives::{
     Address, B256, LogData, Selector, U256,
     map::{AddressHashMap, HashMap, HashSet},
 };
+use alloy_signer_local::PrivateKeySigner;
 use alloy_sol_types::SolValue;
 use foundry_common::{
     ContractsByArtifact, SELECTOR_LEN,
@@ -35,7 +36,11 @@ use foundry_evm_networks::{
     NetworkConfigs, NetworkVariant, TEMPO_PRECOMPILES, celo::transfer::CELO_TRANSFER_LABEL,
 };
 use itertools::Itertools;
-use revm::{bytecode::opcode::OpCode, interpreter::InstructionResult};
+use revm::{
+    bytecode::opcode::OpCode,
+    context_interface::transaction::{Authorization, SignedAuthorization},
+    interpreter::InstructionResult,
+};
 use revm_inspectors::tracing::types::{DecodedCallLog, DecodedCallTrace};
 use std::{collections::BTreeMap, sync::OnceLock};
 use tempo_contracts::precompiles::{
@@ -1437,6 +1442,13 @@ impl CallTraceDecoder {
             return Some(decoded);
         }
 
+        if trace.address == CHEATCODE_ADDRESS
+            && let Some(decoded) =
+                funcs.iter().find_map(|func| self.decode_delegation_output(trace, func))
+        {
+            return Some(decoded);
+        }
+
         if let Some(values) =
             funcs.iter().find_map(|func| func.abi_decode_output(&trace.output).ok())
         {
@@ -1452,6 +1464,68 @@ impl CallTraceDecoder {
         }
 
         None
+    }
+
+    /// Describes the account code written by an EIP-7702 delegation cheatcode.
+    ///
+    /// The cheatcodes set the authority's code directly instead of executing an authorization
+    /// list, so without this the trace does not show which account now delegates where.
+    fn decode_delegation_output(&self, trace: &CallTrace, func: &Function) -> Option<String> {
+        let inputs = func.abi_decode_input(trace.data.get(SELECTOR_LEN..)?).ok()?;
+        let cross_chain = func.inputs.last().is_some_and(|input| input.name == "crossChain")
+            && matches!(inputs.last(), Some(DynSolValue::Bool(true)));
+        let (signed, returned) = match func.name.as_str() {
+            "signAndAttachDelegation" => {
+                let values = func.abi_decode_output(&trace.output).ok()?;
+                (values.first()?.clone(), Some(values))
+            }
+            "attachDelegation" => (inputs.first()?.clone(), None),
+            _ => return None,
+        };
+        let DynSolValue::Tuple(fields) = &signed else { return None };
+        let [v, r, s, nonce, implementation] = fields.as_slice() else { return None };
+        let implementation = implementation.as_address()?;
+        let nonce: u64 = nonce.as_uint()?.0.try_into().ok()?;
+
+        // The authority is recovered from the signature, which commits to the chain id.
+        let authority = if func.name == "signAndAttachDelegation" {
+            let DynSolValue::Uint(private_key, _) = inputs.get(1)? else { return None };
+            PrivateKeySigner::from_bytes(&B256::from(*private_key)).ok().map(|s| s.address())
+        } else {
+            let chain_id = if cross_chain { Some(0) } else { self.chain_id };
+            chain_id.and_then(|chain_id| {
+                let auth = Authorization {
+                    chain_id: U256::from(chain_id),
+                    address: implementation,
+                    nonce,
+                };
+                let y_parity: u8 = v.as_uint()?.0.try_into().ok()?;
+                SignedAuthorization::new_unchecked(
+                    auth,
+                    y_parity,
+                    U256::from_be_slice(r.as_fixed_bytes()?.0),
+                    U256::from_be_slice(s.as_fixed_bytes()?.0),
+                )
+                .recover_authority()
+                .ok()
+            })
+        };
+
+        let target = self.format_value(&DynSolValue::Address(implementation));
+        let note = match authority.map(|a| self.format_value(&DynSolValue::Address(a))) {
+            Some(authority) if implementation.is_zero() => {
+                format!("{authority} delegation cleared (nonce {nonce})")
+            }
+            Some(authority) => format!("{authority} delegates to {target} (nonce {nonce})"),
+            // Without the chain id the signature cannot be checked, so the authority is unknown.
+            None => format!("delegation to {target} attached (nonce {nonce})"),
+        };
+        Some(match returned {
+            Some(values) => {
+                format!("{}; {note}", values.iter().map(|v| self.format_value(v)).format(", "))
+            }
+            None => note,
+        })
     }
 
     /// Custom decoding for cheatcode outputs.

@@ -32,6 +32,7 @@ alloy-primitives = { workspace = true, features = [
     "arbitrary",
     "rlp",
 ] }
+alloy-signer-local.workspace = true
 alloy-sol-types.workspace = true
 revm-inspectors.workspace = true
 
