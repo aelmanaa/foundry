@@ -1,8 +1,9 @@
 use super::{IdentifiedAddress, TraceIdentifier};
-use alloy_dyn_abi::JsonAbiExt;
 use alloy_json_abi::JsonAbi;
 use alloy_primitives::{Bytes, map::AddressHashMap};
-use foundry_common::contracts::{ContractsByArtifact, bytecode_diff_score};
+use foundry_common::contracts::{
+    ContractsByArtifact, bytecode_diff_score, is_canonical_constructor_input,
+};
 use foundry_compilers::ArtifactId;
 use revm_inspectors::tracing::types::CallTraceNode;
 use std::borrow::Cow;
@@ -67,7 +68,9 @@ impl<'a> LocalTraceIdentifier<'a> {
                     // Try to decode ctor args with contract abi.
                     if let Some(constructor) = contract.abi.constructor() {
                         let constructor_args = &current_bytecode[bytecode.len()..];
-                        if constructor.abi_decode_input(constructor_args).is_ok() {
+                        // A near match with another code length splits the arguments at the
+                        // wrong offset, which a plain decode can still accept.
+                        if is_canonical_constructor_input(constructor, constructor_args) {
                             // If we can decode args with current abi then remove args from
                             // code to compare.
                             current_bytecode = &current_bytecode[..bytecode.len()];
@@ -191,5 +194,61 @@ impl TraceIdentifier for LocalTraceIdentifier<'_> {
                 })
             })
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloy_dyn_abi::{DynSolValue, JsonAbiExt};
+    use alloy_primitives::U256;
+    use foundry_compilers::artifacts::{
+        BytecodeObject, CompactBytecode, CompactContractBytecode, CompactDeployedBytecode,
+    };
+    use semver::Version;
+
+    #[test]
+    fn constructor_args_offset_needs_canonical_arguments() {
+        let creation = Bytes::from(vec![0x60; 40]);
+        let runtime = Bytes::from(vec![0x61; 40]);
+        let code = |object| CompactBytecode {
+            object: BytecodeObject::Bytecode(object),
+            source_map: None,
+            link_references: Default::default(),
+        };
+        let id = ArtifactId {
+            path: "out/C.json".into(),
+            name: "C".to_owned(),
+            source: "src/C.sol".into(),
+            version: Version::new(0, 8, 30),
+            build_id: String::new(),
+            profile: "default".to_owned(),
+        };
+        let abi = JsonAbi::parse(["constructor(uint256 value)"]).unwrap();
+        let args = abi
+            .constructor()
+            .unwrap()
+            .abi_encode_input(&[DynSolValue::Uint(U256::from(42), 256)])
+            .unwrap();
+        let contracts = ContractsByArtifact::new([(
+            id,
+            CompactContractBytecode {
+                abi: Some(abi),
+                bytecode: Some(code(creation.clone())),
+                deployed_bytecode: Some(CompactDeployedBytecode {
+                    bytecode: Some(code(runtime.clone())),
+                    immutable_references: Default::default(),
+                }),
+            },
+        )]);
+        let identifier = LocalTraceIdentifier::new(&contracts);
+
+        // Same creation code: the arguments start where it ends.
+        let exact = [creation.as_ref(), &args].concat();
+        assert_eq!(identifier.identify_code(&runtime, &exact).unwrap().2, Some(creation.len()));
+
+        // Three bytes longer, as from a slightly different build: the tail is not the arguments.
+        let longer = [creation.as_ref(), &[0xfe; 3], &args].concat();
+        assert_eq!(identifier.identify_code(&runtime, &longer).unwrap().2, None);
     }
 }

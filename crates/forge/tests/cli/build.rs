@@ -2120,7 +2120,7 @@ Ran 1 test for test/Deploy.t.sol:DeployTest
 Traces:
   [[..]] DeployTest::testDeploy()
     ├─ [[..]] VM::deployCode("src/Target.sol:Target", 0x000000000000000000000000000000000000000000000000000000000000002a)
-    │   ├─ [[..]] → new Target@0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f
+    │   ├─ [[..]] → new Target@0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f(42)
     │   │   └─ ← [Return] [..] bytes of code
     │   └─ ← [Return] Target: [0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f]
     ├─ [[..]] Target::value() [staticcall]

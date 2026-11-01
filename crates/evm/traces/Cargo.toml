@@ -60,6 +60,7 @@ yansi.workspace = true
 
 [dev-dependencies]
 ron.workspace = true
+semver.workspace = true
 snapbox.workspace = true
 
 [features]

@@ -6654,6 +6654,7 @@ dependencies = [
  "revm",
  "revm-inspectors",
  "ron",
+ "semver 1.0.28",
  "serde",
  "serde_json",
  "snapbox",

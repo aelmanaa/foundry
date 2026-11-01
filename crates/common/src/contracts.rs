@@ -2,7 +2,7 @@
 
 use crate::{compile::PathOrContractInfo, find_metadata_start, strip_bytecode_placeholders};
 use alloy_dyn_abi::JsonAbiExt;
-use alloy_json_abi::{Event, Function, JsonAbi};
+use alloy_json_abi::{Constructor, Event, Function, JsonAbi};
 use alloy_primitives::{Address, B256, Bytes, Selector, address, hex};
 use eyre::{OptionExt, Result};
 use foundry_compilers::{
@@ -556,13 +556,22 @@ pub fn matches_contract_creation(contract: &ContractData, creation_code: &[u8]) 
     let Some(bytecode) = contract.bytecode() else { return false };
     let Some(arguments) = creation_code.strip_prefix(bytecode.as_ref()) else { return false };
     match contract.abi.constructor() {
-        Some(constructor) => constructor
-            .abi_decode_input(arguments)
-            .ok()
-            .and_then(|values| constructor.abi_encode_input(&values).ok())
-            .is_some_and(|encoded| encoded == arguments),
+        Some(constructor) => is_canonical_constructor_input(constructor, arguments),
         None => arguments.is_empty(),
     }
+}
+
+/// Returns `true` if `arguments` decode as the constructor's inputs and re-encode to the same
+/// bytes.
+///
+/// Compilers encode constructor arguments canonically, so this rejects creation code that was
+/// split at the wrong offset, which a plain decode can accept.
+pub fn is_canonical_constructor_input(constructor: &Constructor, arguments: &[u8]) -> bool {
+    constructor
+        .abi_decode_input(arguments)
+        .ok()
+        .and_then(|values| constructor.abi_encode_input(&values).ok())
+        .is_some_and(|encoded| encoded == arguments)
 }
 
 pub fn bytecode_diff_score<'a>(mut a: &'a [u8], mut b: &'a [u8]) -> f64 {

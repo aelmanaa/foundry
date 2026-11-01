@@ -148,19 +148,19 @@ Ran 1 test for test/Value.t.sol:ValueTest
 Traces:
   [[..]] ValueTest::test_arguments()
     ├─ [[..]] VM::deployCode("src/Target.sol:Target", 0x000000000000000000000000000000000000000000000000000000000000002a, 1000000000000000000 [1e18])
-    │   ├─ [[..]] → new Target@0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f
+    │   ├─ [[..]] → new Target@0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f(42)
     │   │   └─ ← [Return] 203 bytes of code
     │   └─ ← [Return] Target: [0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f]
     ├─ [[..]] VM::deployCode("src/Target.sol:Target", 0x0000000000000000000000000000000000000000000000000000000000000007, 2000000000000000000 [2e18])
-    │   ├─ [[..]] → new Target@0x2e234DAe75C793f67A35089C9d99245E1C58470b
+    │   ├─ [[..]] → new Target@0x2e234DAe75C793f67A35089C9d99245E1C58470b(7)
     │   │   └─ ← [Return] 203 bytes of code
     │   └─ ← [Return] Target: [0x2e234DAe75C793f67A35089C9d99245E1C58470b]
     ├─ [[..]] VM::deployCode("src/Target.sol:Target", 0x0000000000000000000000000000000000000000000000000000000000000008)
-    │   ├─ [[..]] → new Target@0xF62849F9A0B5Bf2913b396098F7c7019b51A820a
+    │   ├─ [[..]] → new Target@0xF62849F9A0B5Bf2913b396098F7c7019b51A820a(8)
     │   │   └─ ← [Return] 203 bytes of code
     │   └─ ← [Return] Target: [0xF62849F9A0B5Bf2913b396098F7c7019b51A820a]
     ├─ [[..]] VM::deployCode("src/Target.sol:Target", 0x0000000000000000000000000000000000000000000000000000000000000009, 3000000000000000000 [3e18])
-    │   ├─ [[..]] → new Target@0x5991A2dF15A8F6A256D3Ec51E99254Cd3fb576A9
+    │   ├─ [[..]] → new Target@0x5991A2dF15A8F6A256D3Ec51E99254Cd3fb576A9(9)
     │   │   └─ ← [Return] 203 bytes of code
     │   └─ ← [Return] Target: [0x5991A2dF15A8F6A256D3Ec51E99254Cd3fb576A9]
     ├─ [303] Target::n() [staticcall]
