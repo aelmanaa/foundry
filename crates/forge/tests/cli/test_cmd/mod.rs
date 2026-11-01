@@ -6292,6 +6292,68 @@ Ran 1 test suite [ELAPSED]: 1 tests passed, 0 failed, 0 skipped (1 total tests)
 "#]]);
 }
 
+// <https://github.com/foundry-rs/foundry/issues/9800>
+#[forgetest_init]
+fn traces_show_attached_delegations(prj: _, cmd: _) {
+    prj.add_test(
+        "Delegation.t.sol",
+        r#"
+import "forge-std/Test.sol";
+contract Implementation {}
+contract DelegationTest is Test {
+    function testAttachedDelegations() external {
+        Implementation implementation = new Implementation();
+        (, uint256 aliceKey) = makeAddrAndKey("alice");
+        (, uint256 bobKey) = makeAddrAndKey("bob");
+        vm.signAndAttachDelegation(address(implementation), aliceKey);
+        vm.attachDelegation(vm.signDelegation(address(implementation), bobKey));
+        vm.attachDelegation(vm.signDelegation(address(implementation), bobKey, true), true);
+        vm.signAndAttachDelegation(address(0), aliceKey, 1);
+    }
+}
+    "#,
+    );
+
+    cmd.args(["test", "--mt", "testAttachedDelegations", "-vvvv"]).assert_success().stdout_eq(str![[r#"
+[COMPILING_FILES] with [SOLC_VERSION]
+[SOLC_VERSION] [ELAPSED]
+Compiler run successful!
+
+Ran 1 test for test/Delegation.t.sol:DelegationTest
+[PASS] testAttachedDelegations() ([GAS])
+Traces:
+  [..] DelegationTest::testAttachedDelegations()
+    ├─ [..] → new Implementation@0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f
+    │   └─ ← [Return] 62 bytes of code
+    ├─ [0] VM::addr(<pk>) [staticcall]
+    │   └─ ← [Return] alice: [0x328809Bc894f92807417D2dAD6b7C998c1aFdac6]
+    ├─ [0] VM::label(alice: [0x328809Bc894f92807417D2dAD6b7C998c1aFdac6], "alice")
+    │   └─ ← [Return]
+    ├─ [0] VM::addr(<pk>) [staticcall]
+    │   └─ ← [Return] bob: [0x1D96F2f6BeF1202E4Ce1Ff6Dad0c2CB002861d3e]
+    ├─ [0] VM::label(bob: [0x1D96F2f6BeF1202E4Ce1Ff6Dad0c2CB002861d3e], "bob")
+    │   └─ ← [Return]
+    ├─ [0] VM::signAndAttachDelegation(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f, "<pk>")
+    │   └─ ← [Return] (0, 0x592863bc23854cdb5615441b2472ab42c9134c3a1933573c55b1f640c728443b, 0x76254503d55b6ae2df5e66a41473b0b5852744aaad2e663a7593bc4c6a080ac5, 0, 0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f); alice: [0x328809Bc894f92807417D2dAD6b7C998c1aFdac6] delegates to Implementation: [0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f] (nonce 0)
+    ├─ [0] VM::signDelegation(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f, "<pk>")
+    │   └─ ← [Return] (1, 0x02cca83a1bb79d1a9f4231c84e2de3f8580b75c73c237f5c9d15a04160ab652c, 0x1e9af4695b1f13038d33a98a54747be1f3fa000ad3950b9b65912e3023374b32, 0, 0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f)
+    ├─ [0] VM::attachDelegation((1, 0x02cca83a1bb79d1a9f4231c84e2de3f8580b75c73c237f5c9d15a04160ab652c, 0x1e9af4695b1f13038d33a98a54747be1f3fa000ad3950b9b65912e3023374b32, 0, 0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f))
+    │   └─ ← [Return] delegation to Implementation: [0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f] attached (nonce 0)
+    ├─ [0] VM::signDelegation(0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f, "<pk>", true)
+    │   └─ ← [Return] (0, 0x6ab0d4d1e58272bf5cc1dd0455ac68d7a823fc5f9732041793dbf47e6c740046, 0x1214d7421bf96caf6c1f60b03ed914d77da497822831e1074a9f8360b93665b3, 1, 0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f)
+    ├─ [0] VM::attachDelegation((0, 0x6ab0d4d1e58272bf5cc1dd0455ac68d7a823fc5f9732041793dbf47e6c740046, 0x1214d7421bf96caf6c1f60b03ed914d77da497822831e1074a9f8360b93665b3, 1, 0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f), true)
+    │   └─ ← [Return] bob: [0x1D96F2f6BeF1202E4Ce1Ff6Dad0c2CB002861d3e] delegates to Implementation: [0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f] (nonce 1)
+    ├─ [0] VM::signAndAttachDelegation(0x0000000000000000000000000000000000000000, "<pk>", 1)
+    │   └─ ← [Return] (0, 0x38db2a0ada75402af7cd5bdb8248a1a5b4fec65fdafea4f935084f00dc2ff3c5, 0x29ce7b1c82f9ceaec21f12d690ba8fe6ecba65869caf6ab2d85d79890dc42df2, 1, 0x0000000000000000000000000000000000000000); alice: [0x328809Bc894f92807417D2dAD6b7C998c1aFdac6] delegation cleared (nonce 1)
+    └─ ← [Stop]
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; [ELAPSED]
+
+Ran 1 test suite [ELAPSED]: 1 tests passed, 0 failed, 0 skipped (1 total tests)
+
+"#]]);
+}
+
 // <https://github.com/foundry-rs/foundry/issues/10060>
 #[forgetest_init]
 fn should_redact_pk_in_sign_delegation(prj: _, cmd: _) {

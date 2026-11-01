@@ -1487,38 +1487,36 @@ impl CallTraceDecoder {
         let implementation = implementation.as_address()?;
         let nonce: u64 = nonce.as_uint()?.0.try_into().ok()?;
 
-        // The authority is recovered from the signature, which commits to the chain id.
+        // The signature commits to a chain id, which `vm.chainId` can change during a run, so
+        // the authority is only named when it does not depend on it: it is derived from the
+        // private key, or recovered from a cross-chain signature (chain id 0).
         let authority = if func.name == "signAndAttachDelegation" {
             let DynSolValue::Uint(private_key, _) = inputs.get(1)? else { return None };
             PrivateKeySigner::from_bytes(&B256::from(*private_key)).ok().map(|s| s.address())
+        } else if cross_chain {
+            let auth = Authorization { chain_id: U256::ZERO, address: implementation, nonce };
+            let y_parity: u8 = v.as_uint()?.0.try_into().ok()?;
+            SignedAuthorization::new_unchecked(
+                auth,
+                y_parity,
+                U256::from_be_slice(r.as_fixed_bytes()?.0),
+                U256::from_be_slice(s.as_fixed_bytes()?.0),
+            )
+            .recover_authority()
+            .ok()
         } else {
-            let chain_id = if cross_chain { Some(0) } else { self.chain_id };
-            chain_id.and_then(|chain_id| {
-                let auth = Authorization {
-                    chain_id: U256::from(chain_id),
-                    address: implementation,
-                    nonce,
-                };
-                let y_parity: u8 = v.as_uint()?.0.try_into().ok()?;
-                SignedAuthorization::new_unchecked(
-                    auth,
-                    y_parity,
-                    U256::from_be_slice(r.as_fixed_bytes()?.0),
-                    U256::from_be_slice(s.as_fixed_bytes()?.0),
-                )
-                .recover_authority()
-                .ok()
-            })
+            None
         };
 
         let target = self.format_value(&DynSolValue::Address(implementation));
-        let note = match authority.map(|a| self.format_value(&DynSolValue::Address(a))) {
-            Some(authority) if implementation.is_zero() => {
-                format!("{authority} delegation cleared (nonce {nonce})")
+        let authority = authority.map(|a| self.format_value(&DynSolValue::Address(a)));
+        let note = match (authority, implementation.is_zero()) {
+            (Some(authority), true) => format!("{authority} delegation cleared (nonce {nonce})"),
+            (Some(authority), false) => {
+                format!("{authority} delegates to {target} (nonce {nonce})")
             }
-            Some(authority) => format!("{authority} delegates to {target} (nonce {nonce})"),
-            // Without the chain id the signature cannot be checked, so the authority is unknown.
-            None => format!("delegation to {target} attached (nonce {nonce})"),
+            (None, true) => format!("delegation cleared (nonce {nonce})"),
+            (None, false) => format!("delegation to {target} attached (nonce {nonce})"),
         };
         Some(match returned {
             Some(values) => {
