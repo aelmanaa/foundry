@@ -4885,7 +4885,7 @@ Traces:
   [..] MetadataTraceTest::test_proxy_trace()
     ├─ [..] → new Counter@0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f
     │   └─ ← [Return] 481 bytes of code
-    ├─ [..] → new Proxy@0x2e234DAe75C793f67A35089C9d99245E1C58470b
+    ├─ [..] → new Proxy@0x2e234DAe75C793f67A35089C9d99245E1C58470b(Counter: [0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f], 0x)
     │   └─ ← [Return] 62 bytes of code
     └─ ← [Stop]
 
@@ -4917,7 +4917,7 @@ Traces:
   [..] MetadataTraceTest::test_proxy_trace()
     ├─ [..] → new Counter@0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f
     │   └─ ← [Return] 427 bytes of code
-    ├─ [..] → new Proxy@0x2e234DAe75C793f67A35089C9d99245E1C58470b
+    ├─ [..] → new Proxy@0x2e234DAe75C793f67A35089C9d99245E1C58470b(Counter: [0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f], 0x)
     │   └─ ← [Return] 8 bytes of code
     └─ ← [Stop]
 
@@ -7255,7 +7255,7 @@ Traces:
   [350673] NonContractDelegateCallRevertTest::test_unlinked_library_call_failure()
     ├─ [0] console::log("Test: Simulating call to unlinked library") [staticcall]
     │   └─ ← [Stop]
-    ├─ [286930] → new LibraryCaller@0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f
+    ├─ [286930] → new LibraryCaller@0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f(0xdEADBEeF00000000000000000000000000000000)
     │   ├─  storage changes:
     │   │   @ 0: 0 → 0x000000000000000000000000deadbeef00000000000000000000000000000000
     │   └─ ← [Return] 960 bytes of code

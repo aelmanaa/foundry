@@ -327,7 +327,7 @@ Ran 2 tests for test/Trace.t.sol:TraceTest
 Traces:
   [..] TraceTest::setUp()
     ├─ [..] TraceTest::create()
-    │   ├─ [405132] → new Node 0@0x2e234DAe75C793f67A35089C9d99245E1C58470b
+    │   ├─ [405132] → new Node 0@0x2e234DAe75C793f67A35089C9d99245E1C58470b(TraceTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496])
     │   │   └─ ← [Return] 1911 bytes of code
     │   ├─ [0] VM::label(Node 0: [0x2e234DAe75C793f67A35089C9d99245E1C58470b], "Node 0")
     │   │   └─ ← [Return]
@@ -393,7 +393,7 @@ Traces:
 Traces:
   [..] TraceTest::setUp()
     ├─ [..] TraceTest::create()
-    │   ├─ [405132] → new Node 0@0x2e234DAe75C793f67A35089C9d99245E1C58470b
+    │   ├─ [405132] → new Node 0@0x2e234DAe75C793f67A35089C9d99245E1C58470b(TraceTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496])
     │   │   └─ ← [Return] 1911 bytes of code
     │   ├─ [0] VM::label(Node 0: [0x2e234DAe75C793f67A35089C9d99245E1C58470b], "Node 0")
     │   │   └─ ← [Return]
@@ -403,7 +403,7 @@ Traces:
   [..] TraceTest::testRecurseCreate()
     ├─ [..] Node 0::recurseCreate(8, 0)
     │   ├─ [..] TraceTest::create()
-    │   │   ├─ [405132] → new Node 1@0x5991A2dF15A8F6A256D3Ec51E99254Cd3fb576A9
+    │   │   ├─ [405132] → new Node 1@0x5991A2dF15A8F6A256D3Ec51E99254Cd3fb576A9(TraceTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496])
     │   │   │   ├─  storage changes:
     │   │   │   │   @ 0: 0 → 0x0000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e1496
     │   │   │   └─ ← [Return] 1911 bytes of code
@@ -415,7 +415,7 @@ Traces:
     │   ├─ emit CreatedChild(childDepth: 1)
     │   ├─ [..] Node 1::recurseCreate(8, 1)
     │   │   ├─ [..] TraceTest::create()
-    │   │   │   ├─ [405132] → new Node 2@0xc7183455a4C133Ae270771860664b6B7ec320bB1
+    │   │   │   ├─ [405132] → new Node 2@0xc7183455a4C133Ae270771860664b6B7ec320bB1(TraceTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496])
     │   │   │   │   ├─  storage changes:
     │   │   │   │   │   @ 0: 0 → 0x0000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e1496
     │   │   │   │   └─ ← [Return] 1911 bytes of code
@@ -427,7 +427,7 @@ Traces:
     │   │   ├─ emit CreatedChild(childDepth: 2)
     │   │   ├─ [..] Node 2::recurseCreate(8, 2)
     │   │   │   ├─ [..] TraceTest::create()
-    │   │   │   │   ├─ [405132] → new Node 3@0xa0Cb889707d426A7A386870A03bc70d1b0697598
+    │   │   │   │   ├─ [405132] → new Node 3@0xa0Cb889707d426A7A386870A03bc70d1b0697598(TraceTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496])
     │   │   │   │   │   ├─  storage changes:
     │   │   │   │   │   │   @ 0: 0 → 0x0000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e1496
     │   │   │   │   │   └─ ← [Return] 1911 bytes of code
@@ -439,7 +439,7 @@ Traces:
     │   │   │   ├─ emit CreatedChild(childDepth: 3)
     │   │   │   ├─ [..] Node 3::recurseCreate(8, 3)
     │   │   │   │   ├─ [..] TraceTest::create()
-    │   │   │   │   │   ├─ [405132] → new Node 4@0x1d1499e622D69689cdf9004d05Ec547d650Ff211
+    │   │   │   │   │   ├─ [405132] → new Node 4@0x1d1499e622D69689cdf9004d05Ec547d650Ff211(TraceTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496])
     │   │   │   │   │   │   ├─  storage changes:
     │   │   │   │   │   │   │   @ 0: 0 → 0x0000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e1496
     │   │   │   │   │   │   └─ ← [Return] 1911 bytes of code
@@ -451,7 +451,7 @@ Traces:
     │   │   │   │   ├─ emit CreatedChild(childDepth: 4)
     │   │   │   │   ├─ [..] Node 4::recurseCreate(8, 4)
     │   │   │   │   │   ├─ [..] TraceTest::create()
-    │   │   │   │   │   │   ├─ [405132] → new Node 5@0xA4AD4f68d0b91CFD19687c881e50f3A00242828c
+    │   │   │   │   │   │   ├─ [405132] → new Node 5@0xA4AD4f68d0b91CFD19687c881e50f3A00242828c(TraceTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496])
     │   │   │   │   │   │   │   ├─  storage changes:
     │   │   │   │   │   │   │   │   @ 0: 0 → 0x0000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e1496
     │   │   │   │   │   │   │   └─ ← [Return] 1911 bytes of code
@@ -463,7 +463,7 @@ Traces:
     │   │   │   │   │   ├─ emit CreatedChild(childDepth: 5)
     │   │   │   │   │   ├─ [..] Node 5::recurseCreate(8, 5)
     │   │   │   │   │   │   ├─ [..] TraceTest::create()
-    │   │   │   │   │   │   │   ├─ [405132] → new Node 6@0x03A6a84cD762D9707A21605b548aaaB891562aAb
+    │   │   │   │   │   │   │   ├─ [405132] → new Node 6@0x03A6a84cD762D9707A21605b548aaaB891562aAb(TraceTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496])
     │   │   │   │   │   │   │   │   ├─  storage changes:
     │   │   │   │   │   │   │   │   │   @ 0: 0 → 0x0000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e1496
     │   │   │   │   │   │   │   │   └─ ← [Return] 1911 bytes of code
@@ -475,7 +475,7 @@ Traces:
     │   │   │   │   │   │   ├─ emit CreatedChild(childDepth: 6)
     │   │   │   │   │   │   ├─ [..] Node 6::recurseCreate(8, 6)
     │   │   │   │   │   │   │   ├─ [..] TraceTest::create()
-    │   │   │   │   │   │   │   │   ├─ [405132] → new Node 7@0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF
+    │   │   │   │   │   │   │   │   ├─ [405132] → new Node 7@0xD6BbDE9174b1CdAa358d2Cf4D57D1a9F7178FBfF(TraceTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496])
     │   │   │   │   │   │   │   │   │   ├─  storage changes:
     │   │   │   │   │   │   │   │   │   │   @ 0: 0 → 0x0000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e1496
     │   │   │   │   │   │   │   │   │   └─ ← [Return] 1911 bytes of code
@@ -487,7 +487,7 @@ Traces:
     │   │   │   │   │   │   │   ├─ emit CreatedChild(childDepth: 7)
     │   │   │   │   │   │   │   ├─ [..] Node 7::recurseCreate(8, 7)
     │   │   │   │   │   │   │   │   ├─ [..] TraceTest::create()
-    │   │   │   │   │   │   │   │   │   ├─ [405132] → new Node 8@0x15cF58144EF33af1e14b5208015d11F9143E27b9
+    │   │   │   │   │   │   │   │   │   ├─ [405132] → new Node 8@0x15cF58144EF33af1e14b5208015d11F9143E27b9(TraceTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496])
     │   │   │   │   │   │   │   │   │   │   ├─  storage changes:
     │   │   │   │   │   │   │   │   │   │   │   @ 0: 0 → 0x0000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e1496
     │   │   │   │   │   │   │   │   │   │   └─ ← [Return] 1911 bytes of code
@@ -642,7 +642,7 @@ Ran 2 tests for test/Trace.t.sol:TraceTest
 Traces:
   [..] TraceTest::setUp()
     ├─ [..] TraceTest::create()
-    │   ├─ [405132] → new Node 0@0x2e234DAe75C793f67A35089C9d99245E1C58470b
+    │   ├─ [405132] → new Node 0@0x2e234DAe75C793f67A35089C9d99245E1C58470b(TraceTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496])
     │   │   └─ ← [Return] 1911 bytes of code
     │   ├─ [0] VM::label(Node 0: [0x2e234DAe75C793f67A35089C9d99245E1C58470b], "Node 0")
     │   │   └─ ← [Return]
@@ -670,7 +670,7 @@ Traces:
 Traces:
   [..] TraceTest::setUp()
     ├─ [..] TraceTest::create()
-    │   ├─ [405132] → new Node 0@0x2e234DAe75C793f67A35089C9d99245E1C58470b
+    │   ├─ [405132] → new Node 0@0x2e234DAe75C793f67A35089C9d99245E1C58470b(TraceTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496])
     │   │   └─ ← [Return] 1911 bytes of code
     │   ├─ [0] VM::label(Node 0: [0x2e234DAe75C793f67A35089C9d99245E1C58470b], "Node 0")
     │   │   └─ ← [Return]
@@ -680,7 +680,7 @@ Traces:
   [..] TraceTest::testRecurseCreate()
     ├─ [..] Node 0::recurseCreate(8, 0)
     │   ├─ [..] TraceTest::create()
-    │   │   ├─ [405132] → new Node 1@0x5991A2dF15A8F6A256D3Ec51E99254Cd3fb576A9
+    │   │   ├─ [405132] → new Node 1@0x5991A2dF15A8F6A256D3Ec51E99254Cd3fb576A9(TraceTest: [0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496])
     │   │   │   ├─  storage changes:
     │   │   │   │   @ 0: 0 → 0x0000000000000000000000007fa9385be102ac3eac297483dd6233d62b3e1496
     │   │   │   └─ ← [Return] 1911 bytes of code

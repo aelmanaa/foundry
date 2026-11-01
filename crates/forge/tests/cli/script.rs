@@ -4763,7 +4763,7 @@ Simulated On-chain Traces:
   [..] → new A@0x5b73C5498c1E3b4dbA84de0F1833c4a029d90519
     └─ ← [Return] 175 bytes of code
 
-  [..] → new B@0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496
+  [..] → new B@0x7FA9385bE102ac3EAc297483Dd6233D62b3e1496(A: [0x5b73C5498c1E3b4dbA84de0F1833c4a029d90519])
     └─ ← [Return] 62 bytes of code
 ...
 "#]]);
