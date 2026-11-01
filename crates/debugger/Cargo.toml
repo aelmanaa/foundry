@@ -24,6 +24,7 @@ eyre.workspace = true
 revm.workspace = true
 serde_json.workspace = true
 soldb-core.workspace = true
+soldb-dap.workspace = true
 soldb-debugger.workspace = true
 soldb-ethdebug.workspace = true
 soldb-repl.workspace = true

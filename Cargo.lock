@@ -6387,6 +6387,7 @@ dependencies = [
  "revm",
  "serde_json",
  "soldb-core",
+ "soldb-dap",
  "soldb-debugger",
  "soldb-ethdebug",
  "soldb-repl",
@@ -12744,7 +12745,7 @@ dependencies = [
  "derive_more",
  "dunce",
  "inturn",
- "itertools 0.10.5",
+ "itertools 0.14.0",
  "once_map",
  "rayon",
  "scoped-tls",
@@ -12754,7 +12755,7 @@ dependencies = [
  "solar-config",
  "solar-data-structures",
  "solar-macros",
- "thiserror 1.0.69",
+ "thiserror 2.0.21",
  "tracing",
  "unicode-width 0.2.2",
 ]
@@ -12789,7 +12790,7 @@ dependencies = [
  "solar-interface",
  "solar-parse",
  "solar-sema",
- "thiserror 1.0.69",
+ "thiserror 2.0.21",
  "tokio",
  "tokio-util",
  "toml_edit",
@@ -12815,7 +12816,7 @@ dependencies = [
  "alloy-primitives",
  "bitflags 2.13.2",
  "bumpalo",
- "itertools 0.10.5",
+ "itertools 0.14.0",
  "memchr",
  "num-bigint 0.5.1",
  "num-rational",
@@ -12872,6 +12873,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "soldb-dap"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07df2acaee860bcfe3bc87a22d1d57a5d91af45a7e929dc20a8cbf96c513e3cc"
+dependencies = [
+ "serde",
+ "serde_json",
+ "soldb-core",
+ "soldb-debugger",
+ "soldb-ethdebug",
+ "soldb-repl",
+ "soldb-rpc",
+]
+
+[[package]]
 name = "soldb-debugger"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -12896,6 +12912,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "soldb-evm"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70006f0bf47571cbaa3d9731c46ad13be26909bb86c82c1b6c9bb923a7d9ae75"
+dependencies = [
+ "ruint",
+ "serde",
+ "serde_json",
+ "soldb-core",
+]
+
+[[package]]
 name = "soldb-repl"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -12905,6 +12933,18 @@ dependencies = [
  "serde_json",
  "soldb-core",
  "soldb-debugger",
+]
+
+[[package]]
+name = "soldb-rpc"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43686164c771d2d348e6a44de360688709baea9a2c6ebd859f73e5017638b970"
+dependencies = [
+ "serde",
+ "serde_json",
+ "soldb-core",
+ "soldb-evm",
 ]
 
 [[package]]

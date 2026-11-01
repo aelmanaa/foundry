@@ -83,6 +83,21 @@ impl SoldbDebugger {
         Ok(Self { trace, contracts, breakpoints })
     }
 
+    /// Serves the session to one Debug Adapter Protocol client that connects to `addr`.
+    ///
+    /// The client attaches over TCP rather than stdio, because test output goes to stdout.
+    /// Relative source paths are reported to the client under `root`.
+    pub(crate) fn serve_dap(self, addr: &str, root: &Path) -> Result<()> {
+        let mut server = soldb_dap::DapServer::with_session(self.trace, self.contracts, root)
+            .map_err(|error| eyre::eyre!("{error}"))?;
+        let listener = std::net::TcpListener::bind(addr)?;
+        sh_eprintln!("Waiting for a DAP client on {}", listener.local_addr()?)?;
+        let (stream, peer) = listener.accept()?;
+        sh_eprintln!("DAP client connected from {peer}")?;
+        let reader = stream.try_clone()?;
+        server.serve(reader, stream).map_err(|error| eyre::eyre!("{error}"))
+    }
+
     /// Runs the session.
     ///
     /// If stdin and stdout are terminals, the full-screen view opens first. Then commands are

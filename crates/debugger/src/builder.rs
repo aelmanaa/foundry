@@ -110,6 +110,16 @@ impl DebuggerBuilder {
     ///
     /// Every trace arena belongs to the same session, including deployment and setup.
     pub fn run(self, dump: Option<&Path>) -> Result<()> {
+        self.run_with(dump, None)
+    }
+
+    /// Serves the session to a Debug Adapter Protocol client that connects to `addr`, with
+    /// source paths reported under `root`.
+    pub fn serve_dap(self, addr: &str, root: &Path) -> Result<()> {
+        self.run_with(None, Some((addr, root)))
+    }
+
+    fn run_with(self, dump: Option<&Path>, dap: Option<(&str, &Path)>) -> Result<()> {
         let Self {
             trace_arenas,
             debug_steps,
@@ -155,15 +165,20 @@ impl DebuggerBuilder {
                 &sources,
                 &known_contracts,
             ),
-            None => SoldbDebugger::new(
-                trace_arenas,
-                recordings,
-                &contract_names,
-                &sources,
-                &known_contracts,
-                &breakpoints,
-            )?
-            .try_run(),
+            None => {
+                let debugger = SoldbDebugger::new(
+                    trace_arenas,
+                    recordings,
+                    &contract_names,
+                    &sources,
+                    &known_contracts,
+                    &breakpoints,
+                )?;
+                match dap {
+                    Some((addr, root)) => debugger.serve_dap(addr, root),
+                    None => debugger.try_run(),
+                }
+            }
         }
     }
 }

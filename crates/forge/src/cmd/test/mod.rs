@@ -571,6 +571,11 @@ pub struct TestArgs {
     )]
     dump: Option<PathBuf>,
 
+    /// Serves the debugger to a Debug Adapter Protocol client, such as an editor, that
+    /// connects to this address, for example `127.0.0.1:4711`.
+    #[arg(long, requires = "debug", conflicts_with = "dump", value_name = "ADDR")]
+    dap: Option<String>,
+
     /// Print a gas report.
     #[arg(long, env = "FORGE_GAS_REPORT")]
     gas_report: bool,
@@ -2003,7 +2008,10 @@ impl TestArgs {
                     if let Some(known_contracts) = &outcome.known_contracts {
                         builder = builder.known_contracts(known_contracts);
                     }
-                    builder.run(self.dump.as_deref())?;
+                    match &self.dap {
+                        Some(addr) => builder.serve_dap(addr, project_root)?,
+                        None => builder.run(self.dump.as_deref())?,
+                    }
                 }
 
                 // All tests have been run once before reaching this point
